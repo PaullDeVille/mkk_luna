@@ -25,11 +25,6 @@ docker-compose up --build
 X-API-KEY: SECRET_API_KEY
 ```
 
-## ℹ️ Примечание про "асинхронность"
-- Все хендлеры FastAPI сделаны `async def`
-- Работа с БД через `AsyncSession` и драйвер `asyncpg`
-- Alembic выполняет миграции через async engine (`async_engine_from_config`)
-
 ## 🌐 Эндпоинты
 - `GET /api/v1/buildings` — список зданий
 - `GET /api/v1/buildings/{building_id}/organizations` — организации в здании
