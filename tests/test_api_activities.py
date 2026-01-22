@@ -3,6 +3,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.crud.organization import create_org
 from app.models.activity import Activity
 from app.models.building import Building
 
@@ -14,7 +15,7 @@ class TestActivitiesAPI:
     async def test_get_activities_empty(self, client: AsyncClient, api_headers: dict):
         """Тест получения пустого списка видов деятельности."""
         response = await client.get("/api/v1/activities", headers=api_headers)
-        
+
         assert response.status_code == 200
         assert response.json() == []
 
@@ -25,14 +26,13 @@ class TestActivitiesAPI:
         db_session: AsyncSession
     ):
         """Тест получения списка видов деятельности."""
-        # Создаем тестовые данные
         activity1 = Activity(name="Еда", parent_id=None, level=1)
         activity2 = Activity(name="Услуги", parent_id=None, level=1)
         db_session.add_all([activity1, activity2])
         await db_session.commit()
-        
+
         response = await client.get("/api/v1/activities", headers=api_headers)
-        
+
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 2
@@ -50,9 +50,9 @@ class TestActivitiesAPI:
             "name": "Торговля",
             "parent_id": None
         }
-        
+
         response = await client.post("/api/v1/activities", json=payload, headers=api_headers)
-        
+
         assert response.status_code == 201
         data = response.json()
         assert data["name"] == "Торговля"
@@ -67,19 +67,18 @@ class TestActivitiesAPI:
         db_session: AsyncSession
     ):
         """Тест создания дочернего вида деятельности."""
-        # Создаем родительскую деятельность
         parent = Activity(name="Еда", parent_id=None, level=1)
         db_session.add(parent)
         await db_session.commit()
         await db_session.refresh(parent)
-        
+
         payload = {
             "name": "Мясная продукция",
             "parent_id": parent.id
         }
-        
+
         response = await client.post("/api/v1/activities", json=payload, headers=api_headers)
-        
+
         assert response.status_code == 201
         data = response.json()
         assert data["name"] == "Мясная продукция"
@@ -93,30 +92,28 @@ class TestActivitiesAPI:
         db_session: AsyncSession
     ):
         """Тест превышения максимальной глубины."""
-        # Создаем цепочку из 3 уровней
         level1 = Activity(name="Уровень 1", parent_id=None, level=1)
         db_session.add(level1)
         await db_session.commit()
         await db_session.refresh(level1)
-        
+
         level2 = Activity(name="Уровень 2", parent_id=level1.id, level=2)
         db_session.add(level2)
         await db_session.commit()
         await db_session.refresh(level2)
-        
+
         level3 = Activity(name="Уровень 3", parent_id=level2.id, level=3)
         db_session.add(level3)
         await db_session.commit()
         await db_session.refresh(level3)
-        
-        # Попытка создать 4-й уровень
+
         payload = {
             "name": "Уровень 4",
             "parent_id": level3.id
         }
-        
+
         response = await client.post("/api/v1/activities", json=payload, headers=api_headers)
-        
+
         assert response.status_code == 400
         assert "Maximum activity depth" in response.json()["detail"]
 
@@ -126,9 +123,9 @@ class TestActivitiesAPI:
             "name": "Тест",
             "parent_id": 99999
         }
-        
+
         response = await client.post("/api/v1/activities", json=payload, headers=api_headers)
-        
+
         assert response.status_code == 404
         assert "Parent activity not found" in response.json()["detail"]
 
@@ -139,14 +136,13 @@ class TestActivitiesAPI:
         sample_organization
     ):
         """Тест получения организаций по виду деятельности."""
-        # Используем существующую организацию с деятельностью
         activity_id = sample_organization.activities[0].id
-        
+
         response = await client.get(
             f"/api/v1/activities/{activity_id}/organizations",
             headers=api_headers
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert len(data) >= 1
@@ -160,27 +156,24 @@ class TestActivitiesAPI:
         sample_building: Building
     ):
         """Тест получения организаций по деятельности с дочерними."""
-        # Создаем иерархию деятельностей
         food = Activity(name="Еда", parent_id=None, level=1)
         db_session.add(food)
         await db_session.commit()
         await db_session.refresh(food)
-        
+
         meat = Activity(name="Мясо", parent_id=food.id, level=2)
         db_session.add(meat)
         await db_session.commit()
         await db_session.refresh(meat)
-        
-        # Создаем организации
-        from app.crud.organization import create_org
+
         org1 = await create_org(db_session, "Продуктовый", sample_building.id, [], [food.id])
         org2 = await create_org(db_session, "Мясной", sample_building.id, [], [meat.id])
-        
+
         response = await client.get(
             f"/api/v1/activities/{food.id}/organizations",
             headers=api_headers
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 2
@@ -193,21 +186,19 @@ class TestActivitiesAPI:
         sample_building: Building
     ):
         """Тест поиска организаций по названию вида деятельности."""
-        # Создаем деятельность и организацию
         activity = Activity(name="Торговля", parent_id=None, level=1)
         db_session.add(activity)
         await db_session.commit()
         await db_session.refresh(activity)
-        
-        from app.crud.organization import create_org
+
         await create_org(db_session, "Магазин", sample_building.id, [], [activity.id])
-        
+
         response = await client.get(
             "/api/v1/activities/search/by-name/organizations",
             params={"name": "Торговля"},
             headers=api_headers
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert len(data) >= 1
@@ -223,7 +214,7 @@ class TestActivitiesAPI:
             params={"name": "НесуществующаяДеятельность"},
             headers=api_headers
         )
-        
+
         assert response.status_code == 200
         assert response.json() == []
 
@@ -237,5 +228,5 @@ class TestActivitiesAPI:
             "/api/v1/activities/search/by-name/organizations",
             headers=api_headers
         )
-        
-        assert response.status_code == 422  # Validation error
+
+        assert response.status_code == 422

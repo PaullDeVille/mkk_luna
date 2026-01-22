@@ -2,6 +2,8 @@
 import pytest
 from httpx import AsyncClient
 
+from app.models.building import Building
+from app.crud.organization import create_org
 
 @pytest.mark.unit
 class TestSecurity:
@@ -21,7 +23,7 @@ class TestSecurity:
     async def test_api_key_missing(self, client: AsyncClient):
         """Тест доступа без API ключа."""
         response = await client.get("/api/v1/activities")
-        assert response.status_code == 422  # Validation error - missing header
+        assert response.status_code == 422
 
     async def test_api_key_empty(self, client: AsyncClient):
         """Тест доступа с пустым API ключом."""
@@ -73,7 +75,6 @@ class TestIntegration:
         sample_activity
     ):
         """Тест полного workflow: создание и поиск организации."""
-        # 1. Создаем организацию
         create_payload = {
             "name": "Тестовая организация для workflow",
             "building_id": sample_building.id,
@@ -90,7 +91,6 @@ class TestIntegration:
         created_org = create_response.json()
         org_id = created_org["id"]
 
-        # 2. Получаем организацию по ID
         get_response = await client.get(
             f"/api/v1/organizations/{org_id}",
             headers=api_headers
@@ -98,7 +98,6 @@ class TestIntegration:
         assert get_response.status_code == 200
         assert get_response.json()["id"] == org_id
 
-        # 3. Ищем по названию
         search_response = await client.get(
             "/api/v1/organizations/search/by-name",
             params={"name": "Тестовая организация"},
@@ -107,7 +106,6 @@ class TestIntegration:
         assert search_response.status_code == 200
         assert any(org["id"] == org_id for org in search_response.json())
 
-        # 4. Ищем по зданию
         building_response = await client.get(
             f"/api/v1/buildings/{sample_building.id}/organizations",
             headers=api_headers
@@ -115,7 +113,6 @@ class TestIntegration:
         assert building_response.status_code == 200
         assert any(org["id"] == org_id for org in building_response.json())
 
-        # 5. Ищем по виду деятельности
         activity_response = await client.get(
             f"/api/v1/activities/{sample_activity.id}/organizations",
             headers=api_headers
@@ -131,7 +128,6 @@ class TestIntegration:
         sample_building
     ):
         """Тест workflow с иерархией видов деятельности."""
-        # 1. Создаем корневую деятельность
         root_payload = {"name": "Еда", "parent_id": None}
         root_response = await client.post(
             "/api/v1/activities",
@@ -141,7 +137,6 @@ class TestIntegration:
         assert root_response.status_code == 201
         root_id = root_response.json()["id"]
 
-        # 2. Создаем дочернюю деятельность
         child_payload = {"name": "Мясо", "parent_id": root_id}
         child_response = await client.post(
             "/api/v1/activities",
@@ -151,7 +146,6 @@ class TestIntegration:
         assert child_response.status_code == 201
         child_id = child_response.json()["id"]
 
-        # 3. Создаем организацию с дочерней деятельностью
         org_payload = {
             "name": "Мясной магазин",
             "building_id": sample_building.id,
@@ -166,7 +160,6 @@ class TestIntegration:
         assert org_response.status_code == 201
         org_id = org_response.json()["id"]
 
-        # 4. Поиск по родительской деятельности должен найти организацию
         parent_search_response = await client.get(
             f"/api/v1/activities/{root_id}/organizations",
             headers=api_headers
@@ -174,7 +167,6 @@ class TestIntegration:
         assert parent_search_response.status_code == 200
         assert any(org["id"] == org_id for org in parent_search_response.json())
 
-        # 5. Поиск по дочерней деятельности также должен найти
         child_search_response = await client.get(
             f"/api/v1/activities/{child_id}/organizations",
             headers=api_headers
@@ -190,10 +182,8 @@ class TestIntegration:
         sample_activity
     ):
         """Тест workflow геопоиска."""
-        from app.models.building import Building
-        from app.crud.organization import create_org
 
-        # 1. Создаем здание в известной точке
+
         building = Building(
             address="Красная площадь, 1",
             latitude=55.753215,
@@ -203,7 +193,6 @@ class TestIntegration:
         await db_session.commit()
         await db_session.refresh(building)
 
-        # 2. Создаем организацию в этом здании
         org = await create_org(
             db_session,
             "Исторический музей",
@@ -212,7 +201,6 @@ class TestIntegration:
             [sample_activity.id]
         )
 
-        # 3. Ищем в радиусе 500м
         response = await client.get(
             "/api/v1/organizations/geo/rectangular-area",
             params={
@@ -228,7 +216,6 @@ class TestIntegration:
         data = response.json()
         assert any(o["id"] == org.id for o in data)
 
-        # 4. Ищем далеко от точки (не должны найти)
         far_response = await client.get(
             "/api/v1/organizations/geo/rectangular-area",
             params={
@@ -257,7 +244,7 @@ class TestErrorHandling:
     async def test_method_not_allowed(self, client: AsyncClient, api_headers: dict):
         """Тест недопустимого HTTP метода."""
         response = await client.put("/api/v1/activities", headers=api_headers)
-        assert response.status_code in [404, 405]  # Method not allowed or not found
+        assert response.status_code in [404, 405]
 
     async def test_invalid_json(self, client: AsyncClient, api_headers: dict, sample_building):
         """Тест с некорректным JSON."""

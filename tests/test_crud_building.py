@@ -17,7 +17,6 @@ class TestBuildingCRUD:
 
     async def test_list_buildings(self, db_session: AsyncSession):
         """Тест получения списка зданий."""
-        # Создаем несколько зданий
         building1 = Building(
             address="ул. Ленина, 1",
             latitude=55.751244,
@@ -33,21 +32,20 @@ class TestBuildingCRUD:
             latitude=55.783315,
             longitude=37.623783
         )
-        
+
         db_session.add_all([building1, building2, building3])
         await db_session.commit()
-        
+
         buildings = await list_buildings(db_session)
-        
+
         assert len(buildings) == 3
         assert all(isinstance(b, Building) for b in buildings)
-        # Проверяем сортировку по id
         assert buildings[0].id < buildings[1].id < buildings[2].id
 
     async def test_list_buildings_with_fixture(self, db_session: AsyncSession, sample_building: Building):
         """Тест получения списка зданий с использованием фикстуры."""
         buildings = await list_buildings(db_session)
-        
+
         assert len(buildings) == 1
         assert buildings[0].id == sample_building.id
         assert buildings[0].address == sample_building.address

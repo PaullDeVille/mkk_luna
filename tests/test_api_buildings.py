@@ -3,6 +3,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.crud.organization import create_org
 from app.models.building import Building
 
 
@@ -13,7 +14,7 @@ class TestBuildingsAPI:
     async def test_get_buildings_empty(self, client: AsyncClient, api_headers: dict):
         """Тест получения пустого списка зданий."""
         response = await client.get("/api/v1/buildings", headers=api_headers)
-        
+
         assert response.status_code == 200
         assert response.json() == []
 
@@ -25,7 +26,7 @@ class TestBuildingsAPI:
     ):
         """Тест получения списка зданий."""
         response = await client.get("/api/v1/buildings", headers=api_headers)
-        
+
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 1
@@ -46,7 +47,6 @@ class TestBuildingsAPI:
         db_session: AsyncSession
     ):
         """Тест получения списка нескольких зданий."""
-        # Создаем несколько зданий
         buildings = [
             Building(address="Адрес 1", latitude=55.0, longitude=37.0),
             Building(address="Адрес 2", latitude=55.1, longitude=37.1),
@@ -54,9 +54,9 @@ class TestBuildingsAPI:
         ]
         db_session.add_all(buildings)
         await db_session.commit()
-        
+
         response = await client.get("/api/v1/buildings", headers=api_headers)
-        
+
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 3
@@ -69,12 +69,12 @@ class TestBuildingsAPI:
     ):
         """Тест получения организаций в здании."""
         building_id = sample_organization.building_id
-        
+
         response = await client.get(
             f"/api/v1/buildings/{building_id}/organizations",
             headers=api_headers
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert len(data) >= 1
@@ -91,7 +91,7 @@ class TestBuildingsAPI:
             f"/api/v1/buildings/{sample_building.id}/organizations",
             headers=api_headers
         )
-        
+
         assert response.status_code == 200
         assert response.json() == []
 
@@ -104,18 +104,15 @@ class TestBuildingsAPI:
         sample_activity
     ):
         """Тест получения нескольких организаций в здании."""
-        from app.crud.organization import create_org
-        
-        # Создаем несколько организаций в одном здании
         org1 = await create_org(db_session, "Орг 1", sample_building.id, [], [sample_activity.id])
         org2 = await create_org(db_session, "Орг 2", sample_building.id, [], [sample_activity.id])
         org3 = await create_org(db_session, "Орг 3", sample_building.id, [], [sample_activity.id])
-        
+
         response = await client.get(
             f"/api/v1/buildings/{sample_building.id}/organizations",
             headers=api_headers
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 3

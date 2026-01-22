@@ -17,31 +17,24 @@ from app.models.building import Building
 from app.models.organization import Organization
 from app.models.phone import Phone
 
-# Настройка логирования для тестов
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
-# URL для тестовой базы данных
-# Автоматически определяем: Docker или локальное окружение
 if os.getenv("DOCKER_ENV") or os.path.exists("/.dockerenv"):
-    # В Docker контейнере используем имя сервиса 'db'
     TEST_DATABASE_URL = "postgresql+asyncpg://user:pass@db:5432/test_mkk_luna_db"
 else:
-    # Локально используем localhost
     TEST_DATABASE_URL = "postgresql+asyncpg://user:pass@localhost:5432/test_mkk_luna_db"
 
 logging.info(f"Используется тестовая БД: {TEST_DATABASE_URL}")
 
-# Создаем тестовый движок
 test_engine = create_async_engine(
     TEST_DATABASE_URL,
     echo=False,
     pool_pre_ping=True
 )
 
-# Создаем фабрику сессий для тестов
 TestSessionLocal = async_sessionmaker(
     bind=test_engine,
     class_=AsyncSession,
@@ -65,16 +58,13 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     
     Создает все таблицы перед тестом и удаляет их после.
     """
-    # Создаем таблицы
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     
-    # Создаем сессию
     async with TestSessionLocal() as session:
         yield session
         await session.rollback()
     
-    # Удаляем таблицы
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
 
@@ -141,11 +131,9 @@ async def sample_organization(
     db_session.add(org)
     await db_session.flush()
     
-    # Добавляем телефон
     phone = Phone(number="+79991234567", organization_id=org.id)
     db_session.add(phone)
     
-    # Добавляем вид деятельности
     await db_session.run_sync(lambda session: org.activities.append(sample_activity))
     
     await db_session.commit()

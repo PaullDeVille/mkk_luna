@@ -6,7 +6,6 @@ from app.api.v1.organizations import router as org_router
 from app.api.v1.buildings import router as bld_router
 from app.api.v1.activities import router as act_router
 
-# Настройка логирования
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -22,7 +21,6 @@ app = FastAPI(title=settings.APP_NAME)
 
 logger.info(f"Инициализация приложения: {settings.APP_NAME}")
 
-# Middleware для логирования запросов
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     logger.info(f"Входящий запрос: {request.method} {request.url.path}")
@@ -34,7 +32,6 @@ async def log_requests(request: Request, call_next):
         logger.error(f"Ошибка при обработке запроса {request.method} {request.url.path}: {str(e)}", exc_info=True)
         raise
 
-# Глобальный обработчик исключений
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Необработанное исключение: {str(exc)}", exc_info=True)

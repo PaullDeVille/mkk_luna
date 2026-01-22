@@ -1,5 +1,6 @@
 """Тесты для моделей данных."""
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.activity import Activity
@@ -18,7 +19,7 @@ class TestModels:
         db_session.add(activity)
         await db_session.commit()
         await db_session.refresh(activity)
-        
+
         assert activity.id is not None
         assert activity.name == "Торговля"
         assert activity.parent_id is None
@@ -30,12 +31,12 @@ class TestModels:
         db_session.add(parent)
         await db_session.commit()
         await db_session.refresh(parent)
-        
+
         child = Activity(name="Мясо", parent_id=parent.id, level=2)
         db_session.add(child)
         await db_session.commit()
         await db_session.refresh(child)
-        
+
         assert child.parent_id == parent.id
         assert child.level == 2
 
@@ -49,7 +50,7 @@ class TestModels:
         db_session.add(building)
         await db_session.commit()
         await db_session.refresh(building)
-        
+
         assert building.id is not None
         assert building.address == "Тестовый адрес"
         assert building.latitude == 55.751244
@@ -65,7 +66,7 @@ class TestModels:
         db_session.add(org)
         await db_session.commit()
         await db_session.refresh(org)
-        
+
         assert org.id is not None
         assert org.name == "Тестовая организация"
         assert org.building_id == sample_building.id
@@ -80,7 +81,7 @@ class TestModels:
         db_session.add(phone)
         await db_session.commit()
         await db_session.refresh(phone)
-        
+
         assert phone.id is not None
         assert phone.number == "+79991234567"
         assert phone.organization_id == sample_organization.id
@@ -95,17 +96,15 @@ class TestModels:
         org = Organization(name="Тест", building_id=sample_building.id)
         db_session.add(org)
         await db_session.flush()
-        
-        # Добавляем телефон
+
         phone = Phone(number="+79991234567", organization_id=org.id)
         db_session.add(phone)
-        
-        # Добавляем деятельность
+
         await db_session.run_sync(lambda session: org.activities.append(sample_activity))
-        
+
         await db_session.commit()
         await db_session.refresh(org)
-        
+
         assert org.building is not None
         assert org.building.id == sample_building.id
         assert len(org.phones) == 1
@@ -120,18 +119,13 @@ class TestModels:
     ):
         """Тест каскадного удаления телефонов."""
         org_id = sample_organization.id
-        
-        # Добавляем телефон
+
         phone = Phone(number="+79991234567", organization_id=org_id)
         db_session.add(phone)
         await db_session.commit()
-        
-        # Удаляем организацию
+
         await db_session.delete(sample_organization)
         await db_session.commit()
-        
-        # Проверяем, что телефон тоже удалился
-        from sqlalchemy import select
         result = await db_session.execute(select(Phone).where(Phone.organization_id == org_id))
         phones = result.scalars().all()
         assert len(phones) == 0
