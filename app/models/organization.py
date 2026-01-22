@@ -28,13 +28,14 @@ class Organization(Base):
     building_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("buildings.id", ondelete="RESTRICT"), nullable=False
     )
-    building: Mapped["Building"] = relationship("Building", back_populates="organizations")
+    building: Mapped["Building"] = relationship("Building", back_populates="organizations", lazy="selectin")
 
     phones: Mapped[list["Phone"]] = relationship(
-        "Phone", back_populates="organization", cascade="all, delete-orphan"
+        "Phone", back_populates="organization", cascade="all, delete-orphan", lazy="selectin"
     )
     activities: Mapped[list["Activity"]] = relationship(
         "Activity",
         secondary=organization_activity,
         back_populates="organizations",
+        lazy="selectin"
     )

@@ -20,4 +20,4 @@ class Phone(Base):
     organization_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
     )
-    organization: Mapped["Organization"] = relationship("Organization", back_populates="phones")
+    organization: Mapped["Organization"] = relationship("Organization", back_populates="phones", lazy="selectin")

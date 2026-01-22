@@ -154,7 +154,9 @@ async def create_org(db: AsyncSession, name: str, building_id: int, phone_number
 
     if activity_ids:
         res = await db.execute(select(Activity).where(Activity.id.in_(activity_ids)))
-        org.activities = res.scalars().all()
+        activities = res.scalars().all()
+        # Используем run_sync для синхронной операции с relationship
+        await db.run_sync(lambda session: org.activities.extend(activities))
 
     await db.commit()
     return await get_org(db, org.id)

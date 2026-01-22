@@ -66,6 +66,12 @@ def upgrade() -> None:
         ON CONFLICT DO NOTHING;
     """))
 
+    # Сброс sequences после вставки данных с явными ID
+    op.execute(sa.text("SELECT setval('buildings_id_seq', (SELECT COALESCE(MAX(id), 1) FROM buildings));"))
+    op.execute(sa.text("SELECT setval('activities_id_seq', (SELECT COALESCE(MAX(id), 1) FROM activities));"))
+    op.execute(sa.text("SELECT setval('organizations_id_seq', (SELECT COALESCE(MAX(id), 1) FROM organizations));"))
+    op.execute(sa.text("SELECT setval('phones_id_seq', (SELECT COALESCE(MAX(id), 1) FROM phones));"))
+
 def downgrade() -> None:
     op.execute(sa.text("DELETE FROM organization_activity;"))
     op.execute(sa.text("DELETE FROM phones;"))

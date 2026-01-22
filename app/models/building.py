@@ -21,5 +21,5 @@ class Building(Base):
     longitude: Mapped[float] = mapped_column(Float, nullable=False)
 
     organizations: Mapped[list["Organization"]] = relationship(
-        "Organization", back_populates="building", cascade="all, delete-orphan"
+        "Organization", back_populates="building", cascade="all, delete-orphan", lazy="selectin"
     )
