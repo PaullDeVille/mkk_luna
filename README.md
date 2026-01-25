@@ -132,6 +132,3 @@ docker-compose exec api pytest --cov=app --cov-report=term-missing
 - API Key аутентификация для всех endpoints (кроме `/health`)
 - Валидация всех входных данных через Pydantic
 - SQL Injection защита через SQLAlchemy ORM
-
-## ✍️ Автор
-Павел Сурсков
